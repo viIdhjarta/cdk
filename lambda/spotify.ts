@@ -31,7 +31,7 @@ export async function createSetlist(setlist: any) {
     try {
         await refreshToken();
 
-        const datePart = setlist.event_date.toISOString().split('T')[0];
+        // const datePart = setlist.event_date.toISOString().split('T')[0];
         const playlistResponse = await fetch(`https://api.spotify.com/v1/users/${username}/playlists`, {
             method: 'POST',
             headers: {
@@ -39,7 +39,8 @@ export async function createSetlist(setlist: any) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                name: `${setlist.artist_name} ${setlist.tour_name} (${datePart})`,
+                // name: `${setlist.artist_name} ${setlist.tour_name} (${datePart})`,
+                name: `${setlist.artist_name} ${setlist.tour_name} )`,
                 public: true
             })
         });

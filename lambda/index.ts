@@ -27,7 +27,7 @@ interface Song {
 
 interface Setlist {
     artist_name: string;
-    event_date: Date;
+    event_date?: Date;
     location: string;
     venue: string;
     tour_name: string;
@@ -38,140 +38,6 @@ interface Setlist {
 app.get('/', (c) => c.text('hello'))
 
 app.get('/api', (c) => c.text('hello!!'))
-
-// async function getVisuallySortedElements(url: string, iscover: boolean) { // livefansでsetlist型のオブジェクトを作成
-//     const browser = await puppeteer.launch({
-//         args: chromium.args,
-//         defaultViewport: chromium.defaultViewport,
-//         executablePath: await chromium.executablePath,
-//         headless: chromium.headless,
-//         // ignoreHTTPSErrors: true,
-//     });
-//     const page = await browser.newPage()
-
-//     try {
-//         await page.goto(url, { waitUntil: 'networkidle0' })
-
-//         // Get all td elements
-//         const tdElements = await page.$$('td')
-
-//         // tdElements[0]がpcsl1クラスを持っていたらtrue
-//         const isPCSL1: boolean = await tdElements[0].evaluate((element: Element) => {
-//             return element.classList.contains('pcsl1')
-//         })
-
-//         // アーティスト名取得
-//         const artistName = await page.$('h4 > a')
-//         const artistNameText = await artistName?.evaluate((element: Element) => element.textContent) || "";
-//         // 開催日取得
-//         const eventDate = await page.$('#content > div > div.dataBlock > div.profile > p.date')
-//         const eventDateText = await eventDate?.evaluate((element: Element) => element.textContent) || "";
-//         const event_date = new Date(eventDateText.replace(/(\d{4})\/(\d{2})\/(\d{2})\s+\(.*?\)\s+(\d{2}):(\d{2})\s+開演/, '$1-$2-$3T$4:$5:00.000Z'));
-//         // 会場取得
-//         const venueData = await page.$('#content > div > div.dataBlock > div.profile > address > a')
-//         const venueText = await venueData?.evaluate((element: Element) => element.textContent) || "";
-//         const venue = venueText.replace(/^＠/, '');
-//         // 都市取得
-//         const cityMatch = venue.match(/\((.*?)\)/);
-//         const cityData = cityMatch ? cityMatch[1] : "";
-//         // ツアー名取得
-//         const tourData = await page.$('#content > div > div.dataBlock > div.head > h4.liveName2 > a')
-//         const tourText = await tourData?.evaluate((element: Element) => element.textContent) || "";
-
-
-//         const unsortSetlistSongs: Song[] = []
-
-//         if (isPCSL1) {
-
-//             for (const td of tdElements) {
-//                 const topValue = await td.evaluate((element: Element) => {
-//                     const computedStyle = window.getComputedStyle(element)
-//                     // const computedStyle = element.ownerDocument.defaultView.getComputedStyle(element)
-//                     return computedStyle.getPropertyValue('top')
-//                 })
-
-//                 const match = topValue.match(/(\d+)px/)
-
-//                 if (match) {
-//                     const number = parseInt(match[1], 10)
-//                     const aElement = await td.$('div > a')
-//                     if (aElement) {
-//                         const textContent: any = await aElement.evaluate((element: Element) => element.textContent)
-//                         // カバー曲[]
-//                         const regex = /\[(.*?)\]/;
-//                         const match = textContent.match(regex);
-//                         if (match && match[1]) {
-//                             unsortSetlistSongs.push({ original_artist: match[1], position: number, name: textContent.trim(), is_cover: true })
-//                         } else {
-//                             unsortSetlistSongs.push({ original_artist: artistNameText, position: number, name: textContent.trim(), is_cover: false })
-//                         }
-
-//                     }
-//                 } else {
-//                     console.log(`No number found: ${topValue}`)
-//                 }
-//             }
-//         }
-//         else {
-//             for (const td of tdElements) {
-//                 const aElement = await td.$('div > a')
-//                 if (aElement) {
-//                     const textContent = await aElement.evaluate((element: Element) => element.textContent)
-//                     if (textContent) {
-//                         unsortSetlistSongs.push({ original_artist: artistNameText, position: 0, name: textContent.trim(), is_cover: false })
-//                     }
-//                 }
-//             }
-//         }
-
-//         // 1曲目から順に並び替え
-//         const setlistSongs = unsortSetlistSongs.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-
-//         // songからpositionを削除
-//         setlistSongs.forEach((song) => {
-//             delete song.position;
-//         })
-
-//         //iscoverがtrueの場合、is_coverがtrueの曲を削除
-//         if (iscover) {
-//             for (let i = 0; i < setlistSongs.length; i++) {
-//                 if (setlistSongs[i].is_cover) {
-//                     setlistSongs.splice(i, 1);
-//                     i--;
-//                 }
-//             }
-//         }
-
-//         console.log(setlistSongs)
-
-
-//         const setlist: Setlist = {
-//             artist_name: artistNameText,
-//             event_date: event_date,
-//             location: cityData,
-//             venue: venue,
-//             tour_name: tourText,
-//             songs: setlistSongs,
-//         }
-
-//         const setlist_id = await createSetlist(setlist);
-//         setlist['setlist_id'] = setlist_id;
-
-//         return setlist;
-//         // return unsortSetlistSongs.sort((a, b) => a.position - b.position)
-
-
-//     } catch (error) {
-
-//         console.error(`An error occurred: ${error}`)
-//         return null
-
-//     } finally {
-
-//         await browser.close()
-
-//     }
-// }
 
 app.get('/api/livefans/:id', async (c) => {  // LiveFansからセットリストを取得
     const id = c.req.param('id')
@@ -193,22 +59,29 @@ app.get('/api/livefans/:id', async (c) => {  // LiveFansからセットリスト
         }
 
         const result = await lambda.invoke(params).promise()
-        const payload = JSON.parse(result.Payload as string)
+        const setlistJson = JSON.parse(result.Payload as string)
 
-        return c.json(payload)
+
+        const setlist: Setlist = {
+            artist_name: setlistJson?.artist_name,
+            // event_date: new Date(setlistJson?.event_date),
+            location: setlistJson?.location,
+            venue: setlistJson?.venue,
+            tour_name: setlistJson?.tour_name,
+            songs: setlistJson?.songs,
+        }
+
+        const setlist_id = await createSetlist(setlist);
+
+        setlist.setlist_id = setlist_id;
+
+        return c.json(setlist);
+
     } catch (error) {
         console.error('Error invoking Lambda:', error)
         return c.json({ error: 'Failed to invoke Lambda function' }, 500)
     }
 
-    // const setlist = await getVisuallySortedElements(url, iscover)
-
-    // if (setlist) {
-    //     console.log(setlist)
-    //     return c.json(setlist)
-    // } else {
-    //     return c.json({ error: 'Failed to retrieve elements' }, 500)
-    // }
 })
 
 app.get('/api/setlistfm/:id', async (c) => {  // Setlist.fmからセットリストを取得
