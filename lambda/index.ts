@@ -4,9 +4,12 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import fetch from 'node-fetch'
 import { createSetlist, spGetPlaylist, spModSearchSong, spReCreatePlaylist } from './spotify'
+import * as AWS from 'aws-sdk'
 
 
 const app = new Hono()
+
+const lambda = new AWS.Lambda()
 
 // CORSミドルウェアを追加
 app.use('*', cors())
@@ -170,26 +173,43 @@ app.get('/api', (c) => c.text('hello!!'))
 //     }
 // }
 
-// app.get('/api/livefans/:id', async (c) => {  // LiveFansからセットリストを取得
-//     const id = c.req.param('id')
+app.get('/api/livefans/:id', async (c) => {  // LiveFansからセットリストを取得
+    const id = c.req.param('id')
 
-//     const iscover: boolean = c.req.query('isCover') === 'true'
+    const iscover: boolean = c.req.query('isCover') === 'true'
 
-//     const url = `https://www.livefans.jp/events/${id}`
+    const url = `https://www.livefans.jp/events/${id}`
 
-//     if (!url) {
-//         return c.json({ error: 'URL parameter is required' }, 400)
-//     }
+    if (!url) {
+        return c.json({ error: 'URL parameter is required' }, 400)
+    }
 
-//     const setlist = await getVisuallySortedElements(url, iscover)
 
-//     if (setlist) {
-//         console.log(setlist)
-//         return c.json(setlist)
-//     } else {
-//         return c.json({ error: 'Failed to retrieve elements' }, 500)
-//     }
-// })
+    try {
+        const params = {
+            FunctionName: 'arn:aws:lambda:ap-northeast-1:403617712053:function:selenium-lambda', // 呼び出したいLambda関数の名前
+            InvocationType: 'RequestResponse',
+            Payload: JSON.stringify({ url, iscover })
+        }
+
+        const result = await lambda.invoke(params).promise()
+        const payload = JSON.parse(result.Payload as string)
+
+        return c.json(payload)
+    } catch (error) {
+        console.error('Error invoking Lambda:', error)
+        return c.json({ error: 'Failed to invoke Lambda function' }, 500)
+    }
+
+    // const setlist = await getVisuallySortedElements(url, iscover)
+
+    // if (setlist) {
+    //     console.log(setlist)
+    //     return c.json(setlist)
+    // } else {
+    //     return c.json({ error: 'Failed to retrieve elements' }, 500)
+    // }
+})
 
 app.get('/api/setlistfm/:id', async (c) => {  // Setlist.fmからセットリストを取得
     const id = c.req.param('id')
