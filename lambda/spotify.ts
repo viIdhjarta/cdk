@@ -150,3 +150,17 @@ export async function spReCreatePlaylist(id: string, songIds: string[]) {
     console.log(playlist.id);
     return playlist.id;
 }
+
+export async function spSearchArtist(name: string) {
+    await refreshToken();
+    const en_q = encodeURIComponent(`${name}`);
+    const q = decodeURIComponent(en_q);
+    console.log(`Searching for: ${q}`);
+    const response = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=artist&limit=10&market=JP`, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`
+        }
+    });
+
+    return await response.json();
+}

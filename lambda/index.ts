@@ -3,7 +3,7 @@ import { handle } from 'hono/aws-lambda'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import fetch from 'node-fetch'
-import { createSetlist, spGetPlaylist, spModSearchSong, spReCreatePlaylist } from './spotify'
+import { createSetlist, spGetPlaylist, spModSearchSong, spReCreatePlaylist, spSearchArtist } from './spotify'
 import * as AWS from 'aws-sdk'
 
 
@@ -193,6 +193,17 @@ app.get('/api/song/search/:artist/:name', async (c) => {
     const artist: string = c.req.param('artist') || ''
 
     const data = await spModSearchSong(name, artist);
+
+    return c.json(data);
+})
+
+// アーティスト名からSpotifyを検索
+app.get('/api/artist/search', async (c) => {
+    const query: string = c.req.query('q') || '';
+    console.log(query);
+
+    const data: any = await spSearchArtist(query);
+    
 
     return c.json(data);
 })
