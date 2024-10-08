@@ -55,7 +55,7 @@ app.get('/api/livefans/:id', async (c) => {  // LiveFansからセットリスト
         const params = {
             FunctionName: 'arn:aws:lambda:ap-northeast-1:403617712053:function:selenium-lambda', // 呼び出したいLambda関数の名前
             InvocationType: 'RequestResponse',
-            Payload: JSON.stringify({ url, iscover })
+            Payload: JSON.stringify({ 'handler_type': 'main', url, iscover })
         }
 
         const result = await lambda.invoke(params).promise()
@@ -203,9 +203,24 @@ app.get('/api/artist/search', async (c) => {
     console.log(query);
 
     const data: any = await spSearchArtist(query);
-    
+
 
     return c.json(data);
+})
+
+app.get('/api/musicbrainz/search', async (c) => {
+    const query: string = c.req.query('q') || '';
+    console.log('query', query);
+
+    const response = await fetch(`https://musicbrainz.org/ws/2/url/?query=https://open.spotify.com/artist/${query}&fmt=json&targettype=artist&limit=1`)
+    const data: any = await response.json();
+
+    const id: string = data.urls[0]["relation-list"][0].relations[0].artist.id
+
+    const response2 = await fetch(`https://musicbrainz.org/ws/2/artist/${id}?fmt=json`)
+    const data2: any = await response2.json();
+
+    return c.json(data2);
 })
 
 app.post('/api/recreate/playlist/:id', async (c) => {
@@ -217,6 +232,32 @@ app.post('/api/recreate/playlist/:id', async (c) => {
 
     return c.json(playlistId);
 })
+
+app.get('/fetch-html', async (c) => {
+    try {
+        const artist = c.req.query('artist') || ''
+        const encodedArtist = encodeURIComponent(artist).replace(/%20/g, '+')
+        const url = `https://www.livefans.jp/search?option=1&keyword=${encodedArtist}&genre=all`
+
+        const response = await fetch(url)
+
+        // const html: any = await response.text()
+
+        const params = {
+            FunctionName: 'arn:aws:lambda:ap-northeast-1:403617712053:function:selenium-lambda', 
+            InvocationType: 'RequestResponse',
+            Payload: JSON.stringify({ 'handler_type': 'sub', url })
+        }
+
+        const result = await lambda.invoke(params).promise()
+
+        return c.text(result.Payload as string)
+    } catch (error) {
+        console.error('Error fetching HTML:', error)
+        return c.text('Error fetching HTML', 500)
+    }
+})
+
 
 export default app;
 

@@ -156,7 +156,7 @@ export async function spSearchArtist(name: string) {
     const en_q = encodeURIComponent(`${name}`);
     const q = decodeURIComponent(en_q);
     console.log(`Searching for: ${q}`);
-    const response = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=artist&limit=10&market=JP`, {
+    const response = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=artist&limit=10`, {
         headers: {
             'Authorization': `Bearer ${accessToken}`
         }
