@@ -151,16 +151,24 @@ export async function spReCreatePlaylist(id: string, songIds: string[]) {
     return playlist.id;
 }
 
-export async function spSearchArtist(name: string) {
+export async function spSearchArtist(name: string, site: string) {
     await refreshToken();
     const en_q = encodeURIComponent(`${name}`);
     const q = decodeURIComponent(en_q);
     console.log(`Searching for: ${q}`);
-    const response = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=artist&limit=10`, {
-        headers: {
-            'Authorization': `Bearer ${accessToken}`
-        }
+
+    const headers: Record<string, string> = {
+        'Authorization': `Bearer ${accessToken}`
+    };
+
+    if (site === 'livefans') {
+        headers['Accept-Language'] = 'ja';
+    }
+
+    const response = await fetch(`https://api.spotify.com/v1/search?q=${q}&type=artist&limit=10&market=JP`, {
+        headers: headers
     });
+
 
     return await response.json();
 }

@@ -71,6 +71,8 @@ app.get('/api/livefans/:id', async (c) => {  // LiveFansからセットリスト
             songs: setlistJson?.songs,
         }
 
+        console.log(setlist.songs)
+
         const setlist_id = await createSetlist(setlist);
 
         setlist.setlist_id = setlist_id;
@@ -89,7 +91,7 @@ app.get('/api/setlistfm/:id', async (c) => {  // Setlist.fmからセットリス
     // const iscover = c.req.query('isCover')
     // const istape = c.req.query('isTape')
 
-    const iscover: boolean = c.req.query('isCover') === 'true'  // 上のやり方だとstringが代入されるので上手くいかなかった(型を付けることの大切さ)
+    const iscover: boolean = c.req.query('isCover') === 'true'  // 上のやり方だとstringで代入されるので上手くいかなかった(型を付けることの大切さ)
     const istape: boolean = c.req.query('isTape') === 'true'
 
 
@@ -163,6 +165,7 @@ app.get('/api/setlistfm/:id', async (c) => {  // Setlist.fmからセットリス
             venue: venue,
             tour_name: tourName,
             songs: setlistSongs,
+            setlist_id: id,
         };
 
         console.log('Constructed setlist:', setlist);  // デバッグ用ログ
@@ -200,28 +203,15 @@ app.get('/api/song/search/:artist/:name', async (c) => {
 // アーティスト名からSpotifyを検索
 app.get('/api/artist/search', async (c) => {
     const query: string = c.req.query('q') || '';
-    console.log(query);
+    const site: string = c.req.query('site') || '';
+    console.log(site);
 
-    const data: any = await spSearchArtist(query);
+    const data: any = await spSearchArtist(query, site);
 
 
     return c.json(data);
 })
 
-app.get('/api/musicbrainz/search', async (c) => {
-    const query: string = c.req.query('q') || '';
-    console.log('query', query);
-
-    const response = await fetch(`https://musicbrainz.org/ws/2/url/?query=https://open.spotify.com/artist/${query}&fmt=json&targettype=artist&limit=1`)
-    const data: any = await response.json();
-
-    const id: string = data.urls[0]["relation-list"][0].relations[0].artist.id
-
-    const response2 = await fetch(`https://musicbrainz.org/ws/2/artist/${id}?fmt=json`)
-    const data2: any = await response2.json();
-
-    return c.json(data2);
-})
 
 app.post('/api/recreate/playlist/:id', async (c) => {
     const id: string = c.req.param('id')
@@ -233,7 +223,38 @@ app.post('/api/recreate/playlist/:id', async (c) => {
     return c.json(playlistId);
 })
 
-app.get('/fetch-html', async (c) => {
+app.get('/fetch-html/setlistfm', async (c) => {
+    try {
+        const artist = c.req.query('artist') || ''
+        const encodedArtist = encodeURIComponent(artist).replace(/%20/g, '+')
+
+        const headers = {
+            "x-api-key": "rvH9s-nOQE4FOGgLByWj1VfmjzqIaEt5Q8wB",
+            "Accept": "application/json",
+        }
+        const url = `https://api.setlist.fm/rest/1.0/search/artists?artistName=${encodedArtist}&sort=relevance`
+
+        const response = await fetch(url, { headers })
+        const data: any = await response.json();
+
+        const mbid: string = data.artist[0].mbid
+
+        const searchSetlist = await fetch(`https://api.setlist.fm/rest/1.0/artist/${mbid}/setlists`, { headers })
+
+        const setlistData: any = await searchSetlist.json();
+
+        console.log(setlistData)
+
+        return c.json(setlistData)
+
+
+    } catch (error) {
+        console.error('Error fetching HTML:', error)
+        return c.text('Error fetching HTML', 500)
+    }
+})
+
+app.get('/fetch-html/livefans', async (c) => {
     try {
         const artist = c.req.query('artist') || ''
         const encodedArtist = encodeURIComponent(artist).replace(/%20/g, '+')
@@ -244,14 +265,17 @@ app.get('/fetch-html', async (c) => {
         // const html: any = await response.text()
 
         const params = {
-            FunctionName: 'arn:aws:lambda:ap-northeast-1:403617712053:function:selenium-lambda', 
+            FunctionName: 'arn:aws:lambda:ap-northeast-1:403617712053:function:selenium-lambda',
             InvocationType: 'RequestResponse',
             Payload: JSON.stringify({ 'handler_type': 'sub', url })
         }
 
         const result = await lambda.invoke(params).promise()
+        const setlistJson = JSON.parse(result.Payload as string)
 
-        return c.text(result.Payload as string)
+        console.log(setlistJson)
+
+        return c.json(setlistJson)
     } catch (error) {
         console.error('Error fetching HTML:', error)
         return c.text('Error fetching HTML', 500)
