@@ -46,10 +46,14 @@ export async function createSetlist(setlist: any) {
         });
         const playlist: any = await playlistResponse.json();
 
-        for (const song of setlist.songs) {
-            const trackId = await spSearchSong(song.name, song.original_artist);
-            await spAddPlaylist(playlist.id, trackId);
-        }
+        // まず全ての曲のtrackIdを取得
+        const trackIdPromises = setlist.songs.map((song: any) =>
+            spSearchSong(song.name, song.original_artist)
+        );
+        const trackIds = await Promise.all(trackIdPromises);
+
+        // trackIdの順番を保持したまま、プレイリストに追加
+        await spAddPlaylist(playlist.id, trackIds);
 
         console.log(`Playlist created: https://open.spotify.com/playlist/${playlist.id}`);
         return playlist.id;
@@ -72,7 +76,7 @@ async function spSearchSong(name: string, artist: string): Promise<string> {
     return data.tracks.items[0].id;
 }
 
-async function spAddPlaylist(playlistId: string, trackId: string): Promise<void> {
+async function spAddPlaylist(playlistId: string, trackIds: string[]): Promise<void> {
     await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
         method: 'POST',
         headers: {
@@ -80,11 +84,10 @@ async function spAddPlaylist(playlistId: string, trackId: string): Promise<void>
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            uris: [`spotify:track:${trackId}`]
+            uris: trackIds.map(id => `spotify:track:${id}`)
         })
     });
 }
-
 export async function spGetPlaylist(playlistId: string) {
     await refreshToken();
     const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
