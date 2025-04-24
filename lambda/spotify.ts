@@ -30,6 +30,7 @@ async function refreshToken() {
 export async function createSetlist(setlist: any) {
     try {
         await refreshToken();
+        console.log(setlist)
 
         // const datePart = setlist.event_date.toISOString().split('T')[0];
         const playlistResponse = await fetch(`https://api.spotify.com/v1/users/${username}/playlists`, {
@@ -40,7 +41,7 @@ export async function createSetlist(setlist: any) {
             },
             body: JSON.stringify({
                 // name: `${setlist.artist_name} ${setlist.tour_name} (${datePart})`,
-                name: `${setlist.artist_name} ${setlist.tour_name} )`,
+                name: `${setlist.artist_name} ${setlist.tour_name}`,
                 public: true
             })
         });
@@ -64,6 +65,11 @@ export async function createSetlist(setlist: any) {
 }
 
 async function spSearchSong(name: string, artist: string): Promise<string> {
+    // 特殊文字の前処理
+    if (name.startsWith('#')) {
+        name = name.slice(1);
+    }
+    
     const en_q = encodeURIComponent(`${name} ${artist}`);
     const q = decodeURIComponent(en_q);
     console.log(`Searching for: ${q}`);
